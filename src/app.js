@@ -2,7 +2,6 @@
 // Task is to create server's instance and config the server(like what all middlewares we want to use, which routes we want to use, what all api we'll have etc)
 
 const express = require('express');
-const authRouter = require('./routes/auth.routes');
 const cookieParser = require('cookie-parser');
 
 const app = express(); 
@@ -13,7 +12,19 @@ app.use(express.json()) // this means that we are using express.json() middlewar
 
 app.use(cookieParser()) // this means that we are using cookieParser middleware to parse the cookies sent by the client in the request, and then we can access the cookies using req.cookies in our controllers
 
+/**
+ * - Routes required
+ */
+
+const authRouter = require('./routes/auth.routes');
+const accountRouter = require('./routes/account.routes');
+
+/**
+ * - Routes used
+ */
+
 app.use("/api/auth", authRouter)
+app.use("/api/accounts", accountRouter)
 
 
 module.exports = app;
