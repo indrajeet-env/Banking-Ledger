@@ -2,6 +2,8 @@ const userModel = require('../models/user.model');
 
 const jwt = require('jsonwebtoken');
 
+const emailService = require('../services/email.service');
+
 /**
  * 
  * - user register controller
@@ -36,7 +38,7 @@ async function userRegisterController(req, res){
     token
   }) //status code 201 means that the user is created successfully, and we are sending a json response with a message and the user data, which is sent back to the client after successful registration
 
-
+  await emailService.sendRegistrationEmail(user.email, user.name)
 }
 
 /**
