@@ -1,3 +1,5 @@
+const ledgerModel = require('./ledger.model');
+
 const mongoose = require('mongoose');
 
 const accountSchema = new mongoose.Schema({
@@ -36,6 +38,54 @@ accountSchema.index({user: 1, status: 1}); // this means that we are creating a 
 //   status: "ACTIVE"
 // });
 
+accountSchema.methods.getBalance = async function() {
+  const balanceData = await ledgerModel.aggregate([
+    { $match: { account: this._id } }, // match the account and get all the ledger entries for this account
+    {
+      $group: {
+        _id: null, // group all the ledger entries for this account together, we don't need to group by any field, so we can set _id to null
+        
+        totalDebit: { // sum of all the debit transactions for this account, we will use $cond to check if the type of the transaction is DEBIT, then we will add the amount to totalDebit, otherwise we will add 0 to totalDebit
+          $sum: {
+            $cond: [
+              { $eq: ["$type", "DEBIT"] }, // if type == DEBIT
+              "$amount",                   // add amount
+              0                            // else add 0       
+            ]
+          }
+        },
+
+        totalCredit: { // sum of all the credit transactions for this account, we will use $cond to check if the type of the transaction is CREDIT, then we will add the amount to totalCredit, otherwise we will add 0 to totalCredit
+          $sum: {
+            $cond: [
+              { $eq: ["$type", "CREDIT"]},
+              "$amount",
+              0
+            ]
+          }
+        }
+      }
+    },
+    {
+      $project: {  // project is basically to shape the output of the aggregation, we will use it to calculate the balance from totalCredit and totalDebit
+        _id: 0, // we don't need _id in the final output, so we can set it to 0
+        balance: {$subtract: ["$totalCredit", "$totalDebit"] }
+      }
+    }
+  ])
+
+  if(balanceData.length === 0){
+    return 0; // if there are no ledger entries for this account, then the balance is 0, usually when the account is newly created and no transactions have been made yet, so there are no ledger entries for this account, in that case we will return 0 as the balance
+  }
+
+  return balanceData[0].balance; // if there are ledger entries for this account, then we will return the balance calculated from the ledger entries, which is totalCredit - totalDebit and its always at index 0, because there is just one element in the final aggregation result i.e in the $project, we just have "balance"
+}
+
 
 const accountModel = mongoose.model('account', accountSchema) // Create a model called account using this schema;
 module.exports = accountModel;
+
+
+// MATCH → filter data
+// GROUP → compute totals
+// PROJECT → format result

@@ -11,4 +11,10 @@ const accountController = require('../controllers/account.controller');
 
 router.post("/", authMiddleware.authMiddleware, accountController.createAccountController)
 
+/**
+ * - Route: GET /api/accounts/
+ */
+
+router.get("/", authMiddleware.authMiddleware, accountController.getUserAccountsController) // this means that when a GET request is made to the /accounts endpoint, the authMiddleware will be executed first to check if the user is authenticated, and if the user is authenticated, then the getUserAccountsController will be executed to handle the logic of fetching the user's account details and returning it in the response.
+
 module.exports = router;
