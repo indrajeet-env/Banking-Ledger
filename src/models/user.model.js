@@ -20,6 +20,12 @@ const userSchema = new mongoose.Schema({
     minlength: 6,
     select: false // this means that when we query the user from DB, then password field will not be included in the result, because we dont want to send password to client
   },
+  systemUser: {
+    type: Boolean,
+    default: false, // this means that by default, when a user is created, it will not be a system user, but we can set this field to true for some users who are created by the system for some specific purpose, like admin users or support users, etc.
+    immutable: true, // this means that once the systemUser field is set for a user, it cannot be changed
+    select: false, // this means that when we query the user from DB, then systemUser field will not be included in the result, because we dont want to send this information to client
+  }
 },{
   timestamps: true, // this will add createdAt and updatedAt fields to the user document, which will store the time when the user was created and updated
 })

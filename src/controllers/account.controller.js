@@ -13,6 +13,18 @@ async function createAccountController(req, res){ // Create a new account for th
   })
 }
 
+async function getUserAccountsController(req, res){ // Get all accounts for the authenticated user (req.user is set by auth middleware)
+  const user = req.user;
+
+  const accounts = await accountModel.find({
+    user: user._id,
+  })
+
+  res.status(200).json({
+    accounts
+  })
+}
+
 module.exports = {
-  createAccountController
+  createAccountController, getUserAccountsController
 }
