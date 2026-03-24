@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 
 const emailService = require('../services/email.service');
 
+const tokenBlacklistModel = require('../models/blacklist.model');
+
 /**
  * 
  * - user register controller
@@ -84,7 +86,29 @@ async function userLoginController(req, res){
   
 }
 
+async function userLogoutController(req, res){
+  const token = req.cookies.token || req.headers.authorization?.split(" ")[1]; // this means that we are getting the token from the cookies or from the authorization header, which is sent by the client when user is trying to logout 
+
+  if(!token){
+    return res.status(400).json({
+      message: "Token not found"
+    })
+  }
+  res.clearCookie("token") // this means that we are clearing the token from the cookies, which is sent by the client when user is trying to logout
+
+  try{
+    await tokenBlacklistModel.create({token}) // this means that we are adding the token to the blacklist, which is stored in the database, so that we can check if the token is blacklisted or not when user is trying to access protected routes, and if the token is blacklisted, then we will not allow the user to access the protected routes
+
+    res.status(200).json({
+      message: "User logged out successfully",
+    })
+  }catch(err){
+    console.log("Error in clearing cookie: ", err);
+  }
+}
+
 module.exports ={
   userRegisterController,
-  userLoginController
+  userLoginController,
+  userLogoutController
 }

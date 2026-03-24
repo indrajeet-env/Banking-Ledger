@@ -1,6 +1,8 @@
 const userModel = require('../models/user.model');
 const jwt = require('jsonwebtoken');
 
+const tokenBlacklistModel = require('../models/blacklist.model');
+
 async function authMiddleware(req, res, next){
   const token = req.headers.authorization?.split(" ")[1] || req.cookies.token; // Try to get JWT token from cookie or from header i.e "Authorization: Bearer <token>" header  
 
@@ -9,6 +11,15 @@ async function authMiddleware(req, res, next){
   if(!token){
     return res.status(401).json({
       message: "Unauthorized user, user isn't logged in, please login to access this resource",
+    })
+  }
+
+  // Check if the token is blacklisted (i.e., user has logged out), agar token blacklist mai mila, that means user ne logout kiya hai, toh usko access denge hi nhi, aur error message bhejenge ki login kro pehle
+  const isBlacklisted = await tokenBlacklistModel.findOne({token}); // Check if the token is blacklisted (i.e., user has logged out)
+
+  if(isBlacklisted){
+    return res.status(401).json({
+      message: "Unauthorized user, please login to access this resource, or your token might be expired or invalid",
     })
   }
 
@@ -37,6 +48,17 @@ async function authSystemUserMiddleware(req, res, next){
       message: "Unauthorized user, user isn't logged in, please login to access this resource",
     })
   }
+
+  // Same check will be done for systemUser, agar token blacklist mai mila, that means user ne logout kiya hai, toh usko access denge hi nhi, aur error message bhejenge ki login kro pehle
+
+  const isBlacklisted = await tokenBlacklistModel.findOne({token}); // Check if the token is blacklisted (i.e., user has logged out)
+
+  if(isBlacklisted){
+    return res.status(401).json({
+      message: "Unauthorized user, please login to access this resource, or your token might be expired or invalid",
+    })
+  }
+
   try{
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
