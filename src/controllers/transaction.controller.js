@@ -125,13 +125,13 @@ async function createTransactionController(req, res){
   try{
     session.startTransaction();
 
-      transaction = await transactionModel.create({
+      transaction = (await transactionModel.create([{
       fromAccount,
       toAccount,
       amount,
       idempotencyKey,
       type : 'TRANSFER',
-    }, {session});
+    }], {session}))[0];
 
     const debitLedgerEntry = await ledgerModel.create([{
       account: fromAccount,
@@ -139,6 +139,10 @@ async function createTransactionController(req, res){
       amount: amount,
       type: 'DEBIT',
     }], {session});
+
+    await(() => {
+      return new Promise((resolve) => setTimeout(resolve, 30 * 1000)) // this is just to simulate a long running transaction (30 sec), so that we can test the idempotency key functionality, because if the transaction is taking too long to process, then the client might send the same transaction request again, and in that case, we should be able to handle that gracefully using idempotency key, and we should not process the same transaction multiple times, so this setTimeout will help us to simulate that scenario
+    }) ()
 
     const creditLedgerEntry = await ledgerModel.create([{
       account: toAccount,
@@ -149,14 +153,18 @@ async function createTransactionController(req, res){
 
     transaction.status = 'COMPLETED';
 
-    await transaction.save({session}); // this will save the transaction (All four processes done) with the updated status
+    await transactionModel.findOneAndUpdate(
+      {_id: transaction._id},
+      {status: 'COMPLETED'},
+      {session}
+    )
 
     await session.commitTransaction(); // this will commit the transaction, which means that all the operations performed within this transaction will be saved to the database, and the changes will be permanent
   }
   catch(err){
     await session.abortTransaction(); // this will abort the transaction, which means that all the operations performed within this transaction will be rolled back, and the changes will not be saved to the database
     return res.status(500).json({
-      message: 'Transaction failed',
+      message: 'Transaction is pending due to some issue',
       error: err.message,
     })
   }
@@ -233,7 +241,7 @@ async function createInitialFundsTransaction(req, res){
   try{
     session.startTransaction();
 
-    transaction = await transactionModel.create({ // this is not created in the db but created on the server
+    transaction = new transactionModel({ // this is not created in the db but created on the server, so we dont need session here, because we are not saving it to the database yet, we will save it to the database after we have created the ledger entries, and updated the transaction status to completed
       fromAccount: fromUserAccount._id, 
       toAccount,
       amount,
